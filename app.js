@@ -12,6 +12,7 @@ class EchoMemo {
         // DOM Elements
         this.memoList = document.getElementById('memo-list');
         this.addMemoBtn = document.getElementById('add-memo-btn');
+        this.voiceWidgetBtn = document.getElementById('voice-widget-btn');
         this.editModal = document.getElementById('edit-modal');
         this.closeModalBtn = document.getElementById('close-modal-btn');
         this.saveMemoBtn = document.getElementById('save-memo-btn');
@@ -27,16 +28,33 @@ class EchoMemo {
         this.renderMemoList();
         this.setupEventListeners();
         this.setupSpeechRecognition();
+        this.handleUrlActions();
+    }
+
+    handleUrlActions() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('action') === 'voice') {
+            // Delay slightly to ensure everything is ready
+            setTimeout(() => {
+                this.startVoiceWidget();
+            }, 500);
+        }
     }
 
     setupEventListeners() {
         this.addMemoBtn.addEventListener('click', () => this.openModal());
+        this.voiceWidgetBtn.addEventListener('click', () => this.startVoiceWidget());
         this.closeModalBtn.addEventListener('click', () => this.closeModal());
         this.saveMemoBtn.addEventListener('click', () => this.saveMemo());
         this.micBtn.addEventListener('click', () => this.toggleRecording());
 
         // Overlay click to close
         this.editModal.querySelector('.modal-overlay').addEventListener('click', () => this.closeModal());
+    }
+
+    startVoiceWidget() {
+        this.openModal();
+        this.startRecording();
     }
 
     setupSpeechRecognition() {
