@@ -2,7 +2,7 @@
     "name": "EchoMemo",
     "short_name": "EchoMemo",
     "description": "音声認識メモアプリ",
-    "start_url": "./index.html",
+    "start_url": "./index.html?action=voice",
     "display": "standalone",
     "background_color": "#0f172a",
     "theme_color": "#0f172a",
