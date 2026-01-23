@@ -28,6 +28,13 @@ class EchoMemo {
         this.init();
     }
 
+    init() {
+        this.renderMemoList();
+        this.setupEventListeners();
+        this.setupSpeechRecognition();
+        this.handleUrlActions();
+    }
+
     updateRecordingStatus(message) {
         if (this.recordingStatus) {
             this.recordingStatus.textContent = message;
