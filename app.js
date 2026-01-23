@@ -58,11 +58,14 @@ class EchoMemo {
     }
 
     forceNewline() {
-        if (this.memoTextarea.value.length > 0 && !this.memoTextarea.value.endsWith('\n')) {
-            this.memoTextarea.value += '\n';
+        if (this.memoTextarea.value.length > 0) {
+            if (!this.memoTextarea.value.endsWith('\n')) {
+                this.memoTextarea.value += '\n';
+            }
+            this.memoTextarea.value += ' '; // Single space prefix
         }
         this.resetNewlineTimer();
-        this.isSameLine = false;
+        this.isSameLine = true; // Set to true so next transcript adds to this new line with prefix
     }
 
     resetNewlineTimer() {
@@ -143,21 +146,26 @@ class EchoMemo {
 
     appendFormattedText(text) {
         let currentText = this.memoTextarea.value;
+        const linePrefix = ' '; // Single space prefix
 
         // If not same line and not empty, add newline first
-        if (!this.isSameLine && currentText.length > 0) {
-            if (!currentText.endsWith('\n')) {
+        if (!this.isSameLine) {
+            if (currentText.length > 0 && !currentText.endsWith('\n')) {
                 currentText += '\n';
             }
+            currentText += linePrefix;
         } else if (this.isSameLine && currentText.length > 0) {
             // If same line, just add a space if needed
             if (!currentText.endsWith('\n') && !currentText.endsWith(' ')) {
                 currentText += ' ';
             }
+        } else if (currentText.length === 0) {
+            // Very first line
+            currentText += linePrefix;
         }
 
-        // Remove any unintentional "・" at the start of the transcript if for some reason it appears
-        const cleanedText = text.replace(/^[・　]+/, '');
+        // Remove any unintentional "・" or spaces at the start of the transcript
+        const cleanedText = text.replace(/^[・　 ]+/, '');
 
         this.memoTextarea.value = currentText + cleanedText;
         this.isSameLine = true;
