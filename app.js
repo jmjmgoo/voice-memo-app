@@ -58,14 +58,15 @@ class EchoMemo {
 
     forceNewline() {
         let currentText = this.memoTextarea.value;
+        const linePrefix = '　'; // 全角空白
         if (currentText.length > 0) {
             if (!currentText.endsWith('\n')) {
                 currentText += '\n';
             }
-            currentText += ' '; // Single space prefix
+            currentText += linePrefix;
             this.memoTextarea.value = currentText;
         } else {
-            this.memoTextarea.value = ' '; // Prefix for empty start
+            this.memoTextarea.value = linePrefix;
         }
         this.resetNewlineTimer();
         this.isSameLine = true;
@@ -149,7 +150,7 @@ class EchoMemo {
 
     appendFormattedText(text) {
         let currentText = this.memoTextarea.value;
-        const linePrefix = ' '; // 行頭の半角スペース
+        const linePrefix = '　'; // 行頭の全角空白
 
         // Case 1: まったくの初期状態
         if (currentText.length === 0) {
@@ -164,8 +165,8 @@ class EchoMemo {
         }
         // Case 3: 同じ行内での追記
         else {
-            // 単語間にスペースが入っていない場合のみスペースを追加
-            if (!currentText.endsWith('\n') && !currentText.endsWith(' ')) {
+            // 単語間にスペースが入っていない場合のみ半角スペースを追加（必要に応じて）
+            if (!currentText.endsWith('\n') && !currentText.endsWith('　') && !currentText.endsWith(' ')) {
                 currentText += ' ';
             }
         }

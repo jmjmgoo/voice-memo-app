@@ -20,16 +20,23 @@ body {
     background-color: var(--bg-color);
     color: var(--text-primary);
     overflow: hidden;
-    height: 100vh;
-    width: 100vw;
+    height: 100%;
+    width: 100%;
 }
 
 .app-container {
-    height: 100%;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     padding: 20px;
     padding-bottom: calc(20px + var(--safe-area-bottom));
+    overflow: hidden;
+}
+
+main {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
 }
 
 header {
@@ -51,8 +58,6 @@ header h1 {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    overflow-y: auto;
-    flex: 1;
     padding-bottom: 80px;
 }
 
