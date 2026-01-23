@@ -145,14 +145,21 @@ class EchoMemo {
         let currentText = this.memoTextarea.value;
 
         // If not same line and not empty, add newline first
-        if (!this.isSameLine && currentText.length > 0 && !currentText.endsWith('\n')) {
-            currentText += '\n';
-        } else if (this.isSameLine && currentText.length > 0 && !currentText.endsWith('\n')) {
+        if (!this.isSameLine && currentText.length > 0) {
+            if (!currentText.endsWith('\n')) {
+                currentText += '\n';
+            }
+        } else if (this.isSameLine && currentText.length > 0) {
             // If same line, just add a space if needed
-            currentText += ' ';
+            if (!currentText.endsWith('\n') && !currentText.endsWith(' ')) {
+                currentText += ' ';
+            }
         }
 
-        this.memoTextarea.value = currentText + text;
+        // Remove any unintentional "・" at the start of the transcript if for some reason it appears
+        const cleanedText = text.replace(/^[・　]+/, '');
+
+        this.memoTextarea.value = currentText + cleanedText;
         this.isSameLine = true;
         this.resetNewlineTimer();
 

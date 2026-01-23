@@ -224,50 +224,53 @@ header h1 {
 
 .modal-footer {
     display: flex;
+    flex-direction: row-reverse;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 12px;
     margin-top: 20px;
     padding-top: 10px;
     border-top: 1px solid var(--glass-border);
 }
 
-.controls-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.icon-btn-circle {
-    width: 44px;
-    height: 44px;
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--glass-border);
-    color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.icon-btn-circle:active {
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(0.95);
-}
-
-.mic-btn {
-    width: 56px;
+.mic-btn,
+.newline-btn-large,
+.save-btn-large {
     height: 56px;
     border-radius: 28px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--glass-border);
-    color: var(--accent-color);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s ease;
+    border: 1px solid var(--glass-border);
+}
+
+.mic-btn {
+    width: 56px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--accent-color);
+}
+
+.newline-btn-large {
+    width: 56px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+}
+
+.newline-btn-large:active {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(0.9);
+}
+
+.save-btn-large {
+    flex: 1;
+    background: var(--accent-color);
+    color: #0f172a;
+    padding: 0 24px;
+    font-weight: 700;
+    font-size: 15px;
+    border: none;
 }
 
 .mic-btn.recording {
@@ -305,20 +308,8 @@ header h1 {
     padding: 8px;
 }
 
-.save-btn-large {
-    background: var(--accent-color);
-    color: #0f172a;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 28px;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    transition: transform 0.2s ease;
-}
-
 .save-btn-large:active {
-    transform: scale(0.95);
+    transform: scale(0.98);
 }
 
 /* Editor */
