@@ -173,7 +173,7 @@ class EchoMemo {
         // Case 3: 同じ行内での追記
         else {
             // 単語間にスペースが入っていない場合のみ半角スペースを追加（必要に応じて）
-            if (!currentText.endsWith('\n') && !currentText.endsWith('　') && !currentText.endsWith(' ')) {
+            if (currentText.length > 0 && !currentText.endsWith('\n') && !currentText.endsWith('　') && !currentText.endsWith(' ')) {
                 currentText += ' ';
             }
         }
