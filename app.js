@@ -18,8 +18,12 @@ class EchoMemo {
         this.saveMemoBtn = document.getElementById('save-memo-btn');
         this.micBtn = document.getElementById('mic-btn');
         this.micIcon = document.getElementById('mic-icon');
+        this.newlineBtn = document.getElementById('newline-btn');
         this.memoTextarea = document.getElementById('memo-textarea');
         this.recordingStatus = document.getElementById('recording-status');
+
+        this.newlineTimer = null;
+        this.isSameLine = false;
 
         this.init();
     }
@@ -47,9 +51,25 @@ class EchoMemo {
         this.closeModalBtn.addEventListener('click', () => this.closeModal());
         this.saveMemoBtn.addEventListener('click', () => this.saveMemo());
         this.micBtn.addEventListener('click', () => this.toggleRecording());
+        this.newlineBtn.addEventListener('click', () => this.forceNewline());
 
         // Overlay click to close
         this.editModal.querySelector('.modal-overlay').addEventListener('click', () => this.closeModal());
+    }
+
+    forceNewline() {
+        if (this.memoTextarea.value.length > 0 && !this.memoTextarea.value.endsWith('\n')) {
+            this.memoTextarea.value += '\n';
+        }
+        this.resetNewlineTimer();
+        this.isSameLine = false;
+    }
+
+    resetNewlineTimer() {
+        if (this.newlineTimer) clearTimeout(this.newlineTimer);
+        this.newlineTimer = setTimeout(() => {
+            this.isSameLine = false;
+        }, 10000); // 10 seconds
     }
 
     startVoiceWidget() {
@@ -122,11 +142,19 @@ class EchoMemo {
     }
 
     appendFormattedText(text) {
-        const currentText = this.memoTextarea.value;
-        const prefix = currentText.length > 0 ? '\n' : '';
-        const formattedLine = `　・${text}`;
+        let currentText = this.memoTextarea.value;
 
-        this.memoTextarea.value = currentText + prefix + formattedLine;
+        // If not same line and not empty, add newline first
+        if (!this.isSameLine && currentText.length > 0 && !currentText.endsWith('\n')) {
+            currentText += '\n';
+        } else if (this.isSameLine && currentText.length > 0 && !currentText.endsWith('\n')) {
+            // If same line, just add a space if needed
+            currentText += ' ';
+        }
+
+        this.memoTextarea.value = currentText + text;
+        this.isSameLine = true;
+        this.resetNewlineTimer();
 
         // Auto scroll to bottom
         this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
@@ -134,6 +162,7 @@ class EchoMemo {
 
     openModal(memoId = null) {
         this.currentMemoId = memoId;
+        this.isSameLine = false; // Reset line status
         if (memoId) {
             const memo = this.memos.find(m => m.id === memoId);
             this.memoTextarea.value = memo.content;
@@ -147,6 +176,7 @@ class EchoMemo {
 
     closeModal() {
         this.stopRecording();
+        if (this.newlineTimer) clearTimeout(this.newlineTimer);
         this.editModal.classList.add('hidden');
         document.body.style.overflow = '';
     }
@@ -160,7 +190,7 @@ class EchoMemo {
 
         // The first line is the title
         const lines = content.split('\n');
-        const firstLine = lines[0].replace(/^[　 \t]*・/, '').trim(); // Remove prefix for title
+        const firstLine = lines[0].trim();
         const title = firstLine || '無題のメモ';
 
         if (this.currentMemoId) {

@@ -218,13 +218,42 @@ header h1 {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--glass-border);
 }
 
-.mic-status-container {
+.modal-footer {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid var(--glass-border);
+}
+
+.controls-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.icon-btn-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.icon-btn-circle:active {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(0.95);
 }
 
 .mic-btn {
@@ -263,7 +292,7 @@ header h1 {
 }
 
 #recording-status {
-    font-size: 12px;
+    font-size: 14px;
     color: var(--text-secondary);
     font-weight: 500;
 }
@@ -273,17 +302,23 @@ header h1 {
     border: none;
     color: var(--text-secondary);
     cursor: pointer;
+    padding: 8px;
 }
 
-.save-btn {
+.save-btn-large {
     background: var(--accent-color);
     color: #0f172a;
     border: none;
-    padding: 8px 18px;
-    border-radius: 20px;
-    font-weight: 600;
-    font-size: 14px;
+    padding: 12px 24px;
+    border-radius: 28px;
+    font-weight: 700;
+    font-size: 15px;
     cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.save-btn-large:active {
+    transform: scale(0.95);
 }
 
 /* Editor */
