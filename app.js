@@ -28,11 +28,10 @@ class EchoMemo {
         this.init();
     }
 
-    init() {
-        this.renderMemoList();
-        this.setupEventListeners();
-        this.setupSpeechRecognition();
-        this.handleUrlActions();
+    updateRecordingStatus(message) {
+        if (this.recordingStatus) {
+            this.recordingStatus.textContent = message;
+        }
     }
 
     handleUrlActions() {
@@ -58,14 +57,18 @@ class EchoMemo {
     }
 
     forceNewline() {
-        if (this.memoTextarea.value.length > 0) {
-            if (!this.memoTextarea.value.endsWith('\n')) {
-                this.memoTextarea.value += '\n';
+        let currentText = this.memoTextarea.value;
+        if (currentText.length > 0) {
+            if (!currentText.endsWith('\n')) {
+                currentText += '\n';
             }
-            this.memoTextarea.value += ' '; // Single space prefix
+            currentText += ' '; // Single space prefix
+            this.memoTextarea.value = currentText;
+        } else {
+            this.memoTextarea.value = ' '; // Prefix for empty start
         }
         this.resetNewlineTimer();
-        this.isSameLine = true; // Set to true so next transcript adds to this new line with prefix
+        this.isSameLine = true;
     }
 
     resetNewlineTimer() {
@@ -84,7 +87,7 @@ class EchoMemo {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
             console.error('Speech Recognition not supported in this browser.');
-            this.recordingStatus.textContent = '音声認識非対応のブラウザです';
+            this.updateRecordingStatus('音声認識非対応のブラウザです');
             this.micBtn.disabled = true;
             return;
         }
@@ -129,7 +132,7 @@ class EchoMemo {
             this.recognition.start();
             this.isRecording = true;
             this.micBtn.classList.add('recording');
-            this.recordingStatus.textContent = '聞き取り中...';
+            this.updateRecordingStatus('聞き取り中...');
         } catch (e) {
             console.error('Failed to start recognition:', e);
         }
@@ -141,37 +144,40 @@ class EchoMemo {
         this.recognition.stop();
         this.isRecording = false;
         this.micBtn.classList.remove('recording');
-        this.recordingStatus.textContent = 'タップして話す';
+        this.updateRecordingStatus('タップして話す');
     }
 
     appendFormattedText(text) {
         let currentText = this.memoTextarea.value;
-        const linePrefix = ' '; // Single space prefix
+        const linePrefix = ' '; // 行頭の半角スペース
 
-        // If not same line and not empty, add newline first
-        if (!this.isSameLine) {
-            if (currentText.length > 0 && !currentText.endsWith('\n')) {
+        // Case 1: まったくの初期状態
+        if (currentText.length === 0) {
+            currentText = linePrefix;
+        }
+        // Case 2: 改行が必要なタイミング（10秒経過後、または改行ボタン押下後）
+        else if (!this.isSameLine) {
+            if (!currentText.endsWith('\n')) {
                 currentText += '\n';
             }
             currentText += linePrefix;
-        } else if (this.isSameLine && currentText.length > 0) {
-            // If same line, just add a space if needed
+        }
+        // Case 3: 同じ行内での追記
+        else {
+            // 単語間にスペースが入っていない場合のみスペースを追加
             if (!currentText.endsWith('\n') && !currentText.endsWith(' ')) {
                 currentText += ' ';
             }
-        } else if (currentText.length === 0) {
-            // Very first line
-            currentText += linePrefix;
         }
 
-        // Remove any unintentional "・" or spaces at the start of the transcript
+        // 音声認識結果の冒頭に含まれがちな不要な記号やスペースを削除
         const cleanedText = text.replace(/^[・　 ]+/, '');
 
         this.memoTextarea.value = currentText + cleanedText;
         this.isSameLine = true;
         this.resetNewlineTimer();
 
-        // Auto scroll to bottom
+        // テキストエリアを最下部へスクロール
         this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
     }
 
