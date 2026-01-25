@@ -118,22 +118,38 @@ class EchoMemo {
         this.recognition = new SpeechRecognition();
         this.recognition.lang = 'ja-JP';
         this.recognition.continuous = true;
-        this.recognition.interimResults = false;
+        this.recognition.interimResults = true; // リアルタイム表示を有効化
 
         this.recognition.onstart = () => {
-            // マイクが実際に音を拾える状態になった瞬間
             this.updateRecordingStatus('● お話しください');
-
-            // スマホを震わせて合図（対応ブラウザのみ）
             if (window.navigator && window.navigator.vibrate) {
-                window.navigator.vibrate(50); // 50msの短い振動
+                window.navigator.vibrate(50);
             }
+            // セッション開始時のテキストを保持
+            this.baseTextBeforeInterim = this.memoTextarea.value;
         };
 
         this.recognition.onresult = (event) => {
-            const transcript = event.results[event.results.length - 1][0].transcript.trim();
-            if (transcript) {
-                this.appendFormattedText(transcript);
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+
+            if (finalTranscript) {
+                this.appendFormattedText(finalTranscript);
+                this.baseTextBeforeInterim = this.memoTextarea.value;
+            } else if (interimTranscript) {
+                // 確定前の言葉を末尾に一時表示
+                const displayInterim = interimTranscript.replace(/^[・　 ]+/, '');
+                this.memoTextarea.value = this.baseTextBeforeInterim + (this.isSameLine ? ' ' : '　') + displayInterim;
+                this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
             }
         };
 
