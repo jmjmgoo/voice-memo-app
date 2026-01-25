@@ -156,7 +156,10 @@ class EchoMemo {
             }
 
             if (finalTranscript) {
+                // 重要: interim表示を一旦クリアした状態（baseTextBeforeInterim）に対して確定分を追記する
+                this.memoTextarea.value = this.baseTextBeforeInterim;
                 this.appendFormattedText(finalTranscript);
+                // 確定後の状態を新しいベースにする
                 this.baseTextBeforeInterim = this.memoTextarea.value;
             } else if (interimTranscript) {
                 // 確定前の言葉を末尾に一時表示
