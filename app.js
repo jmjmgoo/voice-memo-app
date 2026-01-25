@@ -27,6 +27,11 @@ class EchoMemo {
         this.newlineTimer = null;
         this.isSameLine = false;
 
+        // Sorting state
+        this.currentSortMode = 'date'; // 'date' or 'tags'
+        this.sortToggleBtn = document.getElementById('sort-toggle-btn');
+        this.sortLabel = document.getElementById('sort-label');
+
         this.init();
     }
 
@@ -76,6 +81,14 @@ class EchoMemo {
         this.newlineBtn.addEventListener('click', () => this.forceNewline());
 
         this.editModal.querySelector('.modal-overlay').addEventListener('click', () => this.closeModal());
+
+        this.sortToggleBtn.addEventListener('click', () => this.toggleSortMode());
+    }
+
+    toggleSortMode() {
+        this.currentSortMode = this.currentSortMode === 'date' ? 'tags' : 'date';
+        this.sortLabel.textContent = this.currentSortMode === 'date' ? '日付順' : 'タグ別';
+        this.renderMemoList();
     }
 
     forceNewline() {
@@ -332,29 +345,61 @@ class EchoMemo {
             return;
         }
 
-        this.memos.forEach(memo => {
-            const date = new Date(memo.updated_at);
-            const dateString = `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        if (this.currentSortMode === 'date') {
+            // Sort by updatedAt descending
+            const sortedMemos = [...this.memos].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+            sortedMemos.forEach(memo => this.renderMemoCard(memo, this.memoList));
+        } else {
+            // Group by tags
+            const groups = {};
+            this.memos.forEach(memo => {
+                const tags = memo.tags && memo.tags.length > 0 ? memo.tags : ['未分類'];
+                tags.forEach(tag => {
+                    if (!groups[tag]) groups[tag] = [];
+                    groups[tag].push(memo);
+                });
+            });
 
-            const card = document.createElement('div');
-            card.className = 'memo-card';
+            // Sort tag names alphabetically, but keep "未分類" at bottom
+            const tagNames = Object.keys(groups).sort((a, b) => {
+                if (a === '未分類') return 1;
+                if (b === '未分類') return -1;
+                return a.localeCompare(b, 'ja');
+            });
 
-            // Generate tag HTML
-            let tagsHtml = '';
-            if (memo.tags && memo.tags.length > 0) {
-                tagsHtml = `<div class="tag-container">
-                    ${memo.tags.map(t => `<span class="tag-badge">${this.escapeHtml(t)}</span>`).join('')}
-                </div>`;
-            }
+            tagNames.forEach(tagName => {
+                const header = document.createElement('div');
+                header.className = 'group-header';
+                header.textContent = tagName;
+                this.memoList.appendChild(header);
 
-            card.innerHTML = `
-                <div class="title">${this.escapeHtml(memo.title)}</div>
-                <div class="date">${dateString}</div>
-                ${tagsHtml}
-            `;
-            card.addEventListener('click', () => this.openModal(memo.id));
-            this.memoList.appendChild(card);
-        });
+                const groupMemos = groups[tagName].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                groupMemos.forEach(memo => this.renderMemoCard(memo, this.memoList));
+            });
+        }
+    }
+
+    renderMemoCard(memo, container) {
+        const date = new Date(memo.updated_at);
+        const dateString = `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+
+        const card = document.createElement('div');
+        card.className = 'memo-card';
+
+        let tagsHtml = '';
+        if (memo.tags && memo.tags.length > 0) {
+            tagsHtml = `<div class="tag-container">
+                ${memo.tags.map(t => `<span class="tag-badge">${this.escapeHtml(t)}</span>`).join('')}
+            </div>`;
+        }
+
+        card.innerHTML = `
+            <div class="title">${this.escapeHtml(memo.title)}</div>
+            <div class="date">${dateString}</div>
+            ${tagsHtml}
+        `;
+        card.addEventListener('click', () => this.openModal(memo.id));
+        container.appendChild(card);
     }
 
     escapeHtml(str) {
