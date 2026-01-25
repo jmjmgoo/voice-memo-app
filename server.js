@@ -9,10 +9,10 @@ const port = process.env.PORT || 3000;
 
 /**
  * Renderの永続ディスク（Persistent Disk）対応:
- * Mount Pathを /data に設定することを想定しています。
+ * Mount Pathを /var/data に設定することを推奨します。
  * ローカル環境や未設定の場合は同ディレクトリの memos.json を使用します。
  */
-const STORAGE_DIR = existsSync('/data') ? '/data' : __dirname;
+const STORAGE_DIR = existsSync('/var/data') ? '/var/data' : __dirname;
 const DATA_FILE = path.join(STORAGE_DIR, 'memos.json');
 const BACKUP_FILE = path.join(STORAGE_DIR, 'memos_backup.json');
 
