@@ -9,6 +9,9 @@ class EchoMemo {
         this.recognition = null;
         this.isRecording = false;
 
+        // Internal content state to prevent duplication bugs
+        this.confirmedContent = '';
+
         // DOM Elements
         this.memoList = document.getElementById('memo-list');
         this.addMemoBtn = document.getElementById('add-memo-btn');
@@ -22,6 +25,7 @@ class EchoMemo {
         this.newlineBtn = document.getElementById('newline-btn');
         this.memoTextarea = document.getElementById('memo-textarea');
         this.tagInput = document.getElementById('tag-input');
+        this.tagSuggestions = document.getElementById('tag-suggestions');
         this.recordingStatus = document.getElementById('recording-status');
 
         this.newlineTimer = null;
@@ -48,12 +52,26 @@ class EchoMemo {
             if (!response.ok) throw new Error('Fetch failed');
             this.memos = await response.json();
             this.renderMemoList();
+            this.updateTagSuggestions();
         } catch (err) {
             console.error('Error fetching memos:', err);
-            // Fallback to empty if server not ready
             this.memos = [];
             this.renderMemoList();
         }
+    }
+
+    updateTagSuggestions() {
+        const allTags = new Set();
+        this.memos.forEach(m => {
+            if (m.tags) m.tags.forEach(t => allTags.add(t));
+        });
+
+        this.tagSuggestions.innerHTML = '';
+        Array.from(allTags).sort().forEach(tag => {
+            const option = document.createElement('option');
+            option.value = tag;
+            this.tagSuggestions.appendChild(option);
+        });
     }
 
     updateRecordingStatus(message) {
@@ -83,6 +101,11 @@ class EchoMemo {
         this.editModal.querySelector('.modal-overlay').addEventListener('click', () => this.closeModal());
 
         this.sortToggleBtn.addEventListener('click', () => this.toggleSortMode());
+
+        // Sync confirmedContent when user types manually
+        this.memoTextarea.addEventListener('input', () => {
+            this.confirmedContent = this.memoTextarea.value;
+        });
     }
 
     toggleSortMode() {
@@ -92,17 +115,16 @@ class EchoMemo {
     }
 
     forceNewline() {
-        let currentText = this.memoTextarea.value;
         const linePrefix = '　';
-        if (currentText.length > 0) {
-            if (!currentText.endsWith('\n')) {
-                currentText += '\n';
+        if (this.confirmedContent.length > 0) {
+            if (!this.confirmedContent.endsWith('\n')) {
+                this.confirmedContent += '\n';
             }
-            currentText += linePrefix;
-            this.memoTextarea.value = currentText;
+            this.confirmedContent += linePrefix;
         } else {
-            this.memoTextarea.value = linePrefix;
+            this.confirmedContent = linePrefix;
         }
+        this.memoTextarea.value = this.confirmedContent;
         this.resetNewlineTimer();
         this.isSameLine = true;
     }
@@ -131,42 +153,38 @@ class EchoMemo {
         this.recognition = new SpeechRecognition();
         this.recognition.lang = 'ja-JP';
         this.recognition.continuous = true;
-        this.recognition.interimResults = true; // リアルタイム表示を有効化
+        this.recognition.interimResults = true;
 
         this.recognition.onstart = () => {
             this.updateRecordingStatus('● お話しください');
             if (window.navigator && window.navigator.vibrate) {
                 window.navigator.vibrate(50);
             }
-            // セッション開始時のテキストを保持
-            this.baseTextBeforeInterim = this.memoTextarea.value;
+            // Capture the state at the start of recognition
+            this.confirmedContent = this.memoTextarea.value;
         };
 
         this.recognition.onresult = (event) => {
             let interimTranscript = '';
-            let finalTranscript = '';
+            let finalTranscriptOnEvent = '';
 
             for (let i = event.resultIndex; i < event.results.length; ++i) {
                 const transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
-                    finalTranscript += transcript;
+                    finalTranscriptOnEvent += transcript;
                 } else {
                     interimTranscript += transcript;
                 }
             }
 
-            if (finalTranscript) {
-                // 重要: interim表示を一旦クリアした状態（baseTextBeforeInterim）に対して確定分を追記する
-                this.memoTextarea.value = this.baseTextBeforeInterim;
-                this.appendFormattedText(finalTranscript);
-                // 確定後の状態を新しいベースにする
-                this.baseTextBeforeInterim = this.memoTextarea.value;
-            } else if (interimTranscript) {
-                // 確定前の言葉を末尾に一時表示
-                const displayInterim = interimTranscript.replace(/^[・　 ]+/, '');
-                this.memoTextarea.value = this.baseTextBeforeInterim + (this.isSameLine ? ' ' : '　') + displayInterim;
-                this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
+            if (finalTranscriptOnEvent) {
+                this.appendFormattedText(finalTranscriptOnEvent);
             }
+
+            // Always display confirmed part + currently guessed part
+            const interimPart = interimTranscript ? (this.isSameLine ? ' ' : '　') + interimTranscript.replace(/^[・　 ]+/, '') : '';
+            this.memoTextarea.value = this.confirmedContent + interimPart;
+            this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
         };
 
         this.recognition.onerror = (event) => {
@@ -192,14 +210,10 @@ class EchoMemo {
     startRecording() {
         if (!this.recognition) return;
         try {
-            // ステータスを「準備中」にする（マイクはまだ生きていない）
             this.updateRecordingStatus('マイク起動中...');
             this.micBtn.classList.add('recording');
             this.isRecording = true;
-
             this.recognition.start();
-
-            // 実際の開始検知は setupSpeechRecognition 内の onstart で行う
         } catch (e) {
             console.error('Failed to start recognition:', e);
             this.isRecording = false;
@@ -217,27 +231,25 @@ class EchoMemo {
     }
 
     appendFormattedText(text) {
-        let currentText = this.memoTextarea.value;
         const linePrefix = '　';
+        let processedText = text.replace(/^[・　 ]+/, '');
 
-        if (currentText.length === 0) {
-            currentText = linePrefix;
+        if (this.confirmedContent.length === 0) {
+            this.confirmedContent = linePrefix;
         } else if (!this.isSameLine) {
-            if (!currentText.endsWith('\n')) {
-                currentText += '\n';
+            if (!this.confirmedContent.endsWith('\n')) {
+                this.confirmedContent += '\n';
             }
-            currentText += linePrefix;
+            this.confirmedContent += linePrefix;
         } else {
-            if (currentText.length > 0 && !currentText.endsWith('\n') && !currentText.endsWith('　') && !currentText.endsWith(' ')) {
-                currentText += ' ';
+            if (!this.confirmedContent.endsWith('\n') && !this.confirmedContent.endsWith('　') && !this.confirmedContent.endsWith(' ')) {
+                this.confirmedContent += ' ';
             }
         }
 
-        const cleanedText = text.replace(/^[・　 ]+/, '');
-        this.memoTextarea.value = currentText + cleanedText;
+        this.confirmedContent += processedText;
         this.isSameLine = true;
         this.resetNewlineTimer();
-        this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
     }
 
     openModal(memoId = null) {
@@ -246,17 +258,21 @@ class EchoMemo {
 
         if (memoId) {
             const memo = this.memos.find(m => m.id == memoId);
-            this.memoTextarea.value = memo.content;
+            this.confirmedContent = memo.content;
             this.tagInput.value = (memo.tags || []).join(', ');
             this.deleteMemoBtn.classList.remove('hidden');
         } else {
-            this.memoTextarea.value = '';
+            this.confirmedContent = '';
             this.tagInput.value = '';
             this.deleteMemoBtn.classList.add('hidden');
         }
 
+        this.memoTextarea.value = this.confirmedContent;
         this.editModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
+
+        // Refresh suggestions for this open
+        this.updateTagSuggestions();
     }
 
     closeModal() {
@@ -277,7 +293,6 @@ class EchoMemo {
         const firstLine = lines[0].trim().replace(/^　/, '');
         const title = firstLine || '無題のメモ';
 
-        // Tags parsing
         const tags = this.tagInput.value
             .split(',')
             .map(t => t.trim())
@@ -288,14 +303,12 @@ class EchoMemo {
         try {
             let response;
             if (this.currentMemoId) {
-                // Update
                 response = await fetch(`/api/memos/${this.currentMemoId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(memoData)
                 });
             } else {
-                // Create
                 response = await fetch('/api/memos', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -349,11 +362,9 @@ class EchoMemo {
         }
 
         if (this.currentSortMode === 'date') {
-            // Sort by updatedAt descending
             const sortedMemos = [...this.memos].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
             sortedMemos.forEach(memo => this.renderMemoCard(memo, this.memoList));
         } else {
-            // Group by tags
             const groups = {};
             this.memos.forEach(memo => {
                 const tags = memo.tags && memo.tags.length > 0 ? memo.tags : ['未分類'];
@@ -363,7 +374,6 @@ class EchoMemo {
                 });
             });
 
-            // Sort tag names alphabetically, but keep "未分類" at bottom
             const tagNames = Object.keys(groups).sort((a, b) => {
                 if (a === '未分類') return 1;
                 if (b === '未分類') return -1;
