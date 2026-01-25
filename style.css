@@ -345,6 +345,69 @@ header h1 {
     border-color: var(--accent-color);
 }
 
+/* New: Tags & Delete Styles */
+.tag-section {
+    margin-top: 12px;
+}
+
+#tag-input {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+#tag-input:focus {
+    border-color: var(--accent-color);
+}
+
+.delete-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.delete-btn:active {
+    background: rgba(239, 68, 68, 0.2);
+    transform: scale(0.95);
+}
+
+.delete-btn.hidden {
+    display: none;
+}
+
+.tag-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+    min-height: 18px;
+}
+
+.tag-badge {
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--accent-color);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 6px;

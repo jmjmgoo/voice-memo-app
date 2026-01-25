@@ -1,10 +1,10 @@
 /**
- * EchoMemo - Application Logic
+ * EchoMemo - Application Logic (Server Version)
  */
 
 class EchoMemo {
     constructor() {
-        this.memos = JSON.parse(localStorage.getItem('echomemo_data')) || [];
+        this.memos = [];
         this.currentMemoId = null;
         this.recognition = null;
         this.isRecording = false;
@@ -15,11 +15,13 @@ class EchoMemo {
         this.voiceWidgetBtn = document.getElementById('voice-widget-btn');
         this.editModal = document.getElementById('edit-modal');
         this.closeModalBtn = document.getElementById('close-modal-btn');
+        this.deleteMemoBtn = document.getElementById('delete-memo-btn');
         this.saveMemoBtn = document.getElementById('save-memo-btn');
         this.micBtn = document.getElementById('mic-btn');
         this.micIcon = document.getElementById('mic-icon');
         this.newlineBtn = document.getElementById('newline-btn');
         this.memoTextarea = document.getElementById('memo-textarea');
+        this.tagInput = document.getElementById('tag-input');
         this.recordingStatus = document.getElementById('recording-status');
 
         this.newlineTimer = null;
@@ -28,11 +30,25 @@ class EchoMemo {
         this.init();
     }
 
-    init() {
-        this.renderMemoList();
+    async init() {
+        await this.fetchMemos();
         this.setupEventListeners();
         this.setupSpeechRecognition();
         this.handleUrlActions();
+    }
+
+    async fetchMemos() {
+        try {
+            const response = await fetch('/api/memos');
+            if (!response.ok) throw new Error('Fetch failed');
+            this.memos = await response.json();
+            this.renderMemoList();
+        } catch (err) {
+            console.error('Error fetching memos:', err);
+            // Fallback to empty if server not ready
+            this.memos = [];
+            this.renderMemoList();
+        }
     }
 
     updateRecordingStatus(message) {
@@ -44,7 +60,6 @@ class EchoMemo {
     handleUrlActions() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('action') === 'voice') {
-            // Delay slightly to ensure everything is ready
             setTimeout(() => {
                 this.startVoiceWidget();
             }, 500);
@@ -56,16 +71,16 @@ class EchoMemo {
         this.voiceWidgetBtn.addEventListener('click', () => this.startVoiceWidget());
         this.closeModalBtn.addEventListener('click', () => this.closeModal());
         this.saveMemoBtn.addEventListener('click', () => this.saveMemo());
+        this.deleteMemoBtn.addEventListener('click', () => this.deleteMemo());
         this.micBtn.addEventListener('click', () => this.toggleRecording());
         this.newlineBtn.addEventListener('click', () => this.forceNewline());
 
-        // Overlay click to close
         this.editModal.querySelector('.modal-overlay').addEventListener('click', () => this.closeModal());
     }
 
     forceNewline() {
         let currentText = this.memoTextarea.value;
-        const linePrefix = '　'; // 全角空白
+        const linePrefix = '　';
         if (currentText.length > 0) {
             if (!currentText.endsWith('\n')) {
                 currentText += '\n';
@@ -83,7 +98,7 @@ class EchoMemo {
         if (this.newlineTimer) clearTimeout(this.newlineTimer);
         this.newlineTimer = setTimeout(() => {
             this.isSameLine = false;
-        }, 10000); // 10 seconds
+        }, 10000);
     }
 
     startVoiceWidget() {
@@ -94,7 +109,7 @@ class EchoMemo {
     setupSpeechRecognition() {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
-            console.error('Speech Recognition not supported in this browser.');
+            console.error('Speech Recognition not supported.');
             this.updateRecordingStatus('音声認識非対応のブラウザです');
             this.micBtn.disabled = true;
             return;
@@ -119,7 +134,6 @@ class EchoMemo {
 
         this.recognition.onend = () => {
             if (this.isRecording) {
-                // If it ended unexpectedly while we should be recording, restart it
                 this.recognition.start();
             }
         };
@@ -135,7 +149,6 @@ class EchoMemo {
 
     startRecording() {
         if (!this.recognition) return;
-
         try {
             this.recognition.start();
             this.isRecording = true;
@@ -148,7 +161,6 @@ class EchoMemo {
 
     stopRecording() {
         if (!this.recognition) return;
-
         this.recognition.stop();
         this.isRecording = false;
         this.micBtn.classList.remove('recording');
@@ -157,50 +169,45 @@ class EchoMemo {
 
     appendFormattedText(text) {
         let currentText = this.memoTextarea.value;
-        const linePrefix = '　'; // 行頭の全角空白
+        const linePrefix = '　';
 
-        // Case 1: まったくの初期状態
         if (currentText.length === 0) {
             currentText = linePrefix;
-        }
-        // Case 2: 改行が必要なタイミング（10秒経過後、または改行ボタン押下後）
-        else if (!this.isSameLine) {
+        } else if (!this.isSameLine) {
             if (!currentText.endsWith('\n')) {
                 currentText += '\n';
             }
             currentText += linePrefix;
-        }
-        // Case 3: 同じ行内での追記
-        else {
-            // 単語間にスペースが入っていない場合のみ半角スペースを追加（必要に応じて）
+        } else {
             if (currentText.length > 0 && !currentText.endsWith('\n') && !currentText.endsWith('　') && !currentText.endsWith(' ')) {
                 currentText += ' ';
             }
         }
 
-        // 音声認識結果の冒頭に含まれがちな不要な記号やスペースを削除
         const cleanedText = text.replace(/^[・　 ]+/, '');
-
         this.memoTextarea.value = currentText + cleanedText;
         this.isSameLine = true;
         this.resetNewlineTimer();
-
-        // テキストエリアを最下部へスクロール
         this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
     }
 
     openModal(memoId = null) {
         this.currentMemoId = memoId;
-        this.isSameLine = false; // Reset line status
+        this.isSameLine = false;
+
         if (memoId) {
-            const memo = this.memos.find(m => m.id === memoId);
+            const memo = this.memos.find(m => m.id == memoId);
             this.memoTextarea.value = memo.content;
+            this.tagInput.value = (memo.tags || []).join(', ');
+            this.deleteMemoBtn.classList.remove('hidden');
         } else {
             this.memoTextarea.value = '';
+            this.tagInput.value = '';
+            this.deleteMemoBtn.classList.add('hidden');
         }
 
         this.editModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; // Prevent scrolling background
+        document.body.style.overflow = 'hidden';
     }
 
     closeModal() {
@@ -210,54 +217,77 @@ class EchoMemo {
         document.body.style.overflow = '';
     }
 
-    saveMemo() {
+    async saveMemo() {
         const content = this.memoTextarea.value.trim();
         if (!content) {
             this.closeModal();
             return;
         }
 
-        // The first line is the title
         const lines = content.split('\n');
-        const firstLine = lines[0].trim();
+        const firstLine = lines[0].trim().replace(/^　/, '');
         const title = firstLine || '無題のメモ';
 
-        if (this.currentMemoId) {
-            // Update existing
-            const index = this.memos.findIndex(m => m.id === this.currentMemoId);
-            if (index !== -1) {
-                this.memos[index] = {
-                    ...this.memos[index],
-                    title,
-                    content,
-                    updatedAt: new Date().toISOString()
-                };
-            }
-        } else {
-            // Create new
-            const newMemo = {
-                id: Date.now().toString(),
-                title,
-                content,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-            this.memos.unshift(newMemo);
-        }
+        // Tags parsing
+        const tags = this.tagInput.value
+            .split(',')
+            .map(t => t.trim())
+            .filter(t => t.length > 0);
 
-        this.saveToLocaleStorage();
-        this.renderMemoList();
-        this.closeModal();
+        const memoData = { title, content, tags };
+
+        try {
+            let response;
+            if (this.currentMemoId) {
+                // Update
+                response = await fetch(`/api/memos/${this.currentMemoId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(memoData)
+                });
+            } else {
+                // Create
+                response = await fetch('/api/memos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(memoData)
+                });
+            }
+
+            if (response.ok) {
+                await this.fetchMemos();
+                this.closeModal();
+            } else {
+                alert('保存に失敗しました。');
+            }
+        } catch (err) {
+            console.error('Error saving memo:', err);
+            alert('サーバーとの通信に失敗しました。');
+        }
     }
 
-    saveToLocaleStorage() {
-        localStorage.setItem('echomemo_data', JSON.stringify(this.memos));
+    async deleteMemo() {
+        if (!this.currentMemoId) return;
+        if (!confirm('このメモを削除してもよろしいですか？')) return;
+
+        try {
+            const response = await fetch(`/api/memos/${this.currentMemoId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                await this.fetchMemos();
+                this.closeModal();
+            } else {
+                alert('削除に失敗しました。');
+            }
+        } catch (err) {
+            console.error('Error deleting memo:', err);
+            alert('サーバーとの通信に失敗しました。');
+        }
     }
 
     renderMemoList() {
-        // Sort by updatedAt descending
-        this.memos.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
         this.memoList.innerHTML = '';
 
         if (this.memos.length === 0) {
@@ -270,14 +300,24 @@ class EchoMemo {
         }
 
         this.memos.forEach(memo => {
-            const date = new Date(memo.updatedAt);
+            const date = new Date(memo.updated_at);
             const dateString = `${date.getFullYear()}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
 
             const card = document.createElement('div');
             card.className = 'memo-card';
+
+            // Generate tag HTML
+            let tagsHtml = '';
+            if (memo.tags && memo.tags.length > 0) {
+                tagsHtml = `<div class="tag-container">
+                    ${memo.tags.map(t => `<span class="tag-badge">${this.escapeHtml(t)}</span>`).join('')}
+                </div>`;
+            }
+
             card.innerHTML = `
                 <div class="title">${this.escapeHtml(memo.title)}</div>
                 <div class="date">${dateString}</div>
+                ${tagsHtml}
             `;
             card.addEventListener('click', () => this.openModal(memo.id));
             this.memoList.appendChild(card);
@@ -291,7 +331,6 @@ class EchoMemo {
     }
 }
 
-// Spark the app
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new EchoMemo();
 });
