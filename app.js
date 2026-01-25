@@ -9,9 +9,6 @@ class EchoMemo {
         this.recognition = null;
         this.isRecording = false;
 
-        // 【重要】内部で絶対に信頼できる「確定済み」の本文
-        this.confirmedContent = '';
-
         // DOM Elements
         this.memoList = document.getElementById('memo-list');
         this.addMemoBtn = document.getElementById('add-memo-btn');
@@ -99,11 +96,6 @@ class EchoMemo {
 
         this.editModal.querySelector('.modal-overlay').addEventListener('click', () => this.closeModal());
         this.sortToggleBtn.addEventListener('click', () => this.toggleSortMode());
-
-        // 手動入力された場合のみ、confirmedContentを同期する
-        this.memoTextarea.addEventListener('input', () => {
-            this.confirmedContent = this.memoTextarea.value;
-        });
     }
 
     toggleSortMode() {
@@ -113,17 +105,17 @@ class EchoMemo {
     }
 
     forceNewline() {
+        let currentText = this.memoTextarea.value;
         const linePrefix = '　';
-        // 改行処理は常に confirmedContent に対して行う
-        if (this.confirmedContent.length > 0) {
-            if (!this.confirmedContent.endsWith('\n')) {
-                this.confirmedContent += '\n';
+        if (currentText.length > 0) {
+            if (!currentText.endsWith('\n')) {
+                currentText += '\n';
             }
-            this.confirmedContent += linePrefix;
+            currentText += linePrefix;
+            this.memoTextarea.value = currentText;
         } else {
-            this.confirmedContent = linePrefix;
+            this.memoTextarea.value = linePrefix;
         }
-        this.memoTextarea.value = this.confirmedContent;
         this.resetNewlineTimer();
         this.isSameLine = true;
     }
@@ -152,44 +144,25 @@ class EchoMemo {
         this.recognition = new SpeechRecognition();
         this.recognition.lang = 'ja-JP';
         this.recognition.continuous = true;
-        this.recognition.interimResults = true;
+        this.recognition.interimResults = false; // リアルタイム表示を無効化（安定性優先に復帰）
 
         this.recognition.onstart = () => {
             this.updateRecordingStatus('● お話しください');
             if (window.navigator && window.navigator.vibrate) {
                 window.navigator.vibrate(50);
             }
-            // 【修正】ここでの textarea からの読み込みは行わない（二重化の元）
-            // confirmedContent は openModal や手動入力時にセットされたものを維持する
         };
 
         this.recognition.onresult = (event) => {
-            let interimTranscript = '';
-            let finalTranscriptOnEvent = '';
-
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscriptOnEvent += transcript;
-                } else {
-                    interimTranscript += transcript;
-                }
+            // 確定結果（Final）のみを処理するように戻す
+            const transcript = event.results[event.results.length - 1][0].transcript.trim();
+            if (transcript) {
+                this.appendFormattedText(transcript);
             }
-
-            // 確定結果が届いた場合のみ内部データを更新
-            if (finalTranscriptOnEvent) {
-                this.appendFinalText(finalTranscriptOnEvent);
-            }
-
-            // 表示を更新（確定分 + 途中経過）
-            const interimPart = interimTranscript ? (this.isSameLine ? ' ' : '　') + interimTranscript.replace(/^[・　 ]+/, '') : '';
-            this.memoTextarea.value = this.confirmedContent + interimPart;
-            this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
         };
 
         this.recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
-            // マイクが勝手に切れた場合など、録音中なら止める
             if (event.error !== 'no-speech') {
                 this.stopRecording();
             }
@@ -197,7 +170,6 @@ class EchoMemo {
 
         this.recognition.onend = () => {
             if (this.isRecording) {
-                // 自動継続
                 this.recognition.start();
             }
         };
@@ -234,29 +206,28 @@ class EchoMemo {
         this.updateRecordingStatus('タップして話す');
     }
 
-    // 確定したテキストを整形して confirmedContent に追加する
-    appendFinalText(text) {
+    appendFormattedText(text) {
+        let currentText = this.memoTextarea.value;
         const linePrefix = '　';
-        let processedText = text.replace(/^[・　 ]+/, '');
 
-        if (this.confirmedContent.length === 0) {
-            this.confirmedContent = linePrefix;
+        if (currentText.length === 0) {
+            currentText = linePrefix;
         } else if (!this.isSameLine) {
-            if (!this.confirmedContent.endsWith('\n')) {
-                this.confirmedContent += '\n';
+            if (!currentText.endsWith('\n')) {
+                currentText += '\n';
             }
-            this.confirmedContent += linePrefix;
+            currentText += linePrefix;
         } else {
-            // 文字列の末尾が改行や空白でない場合のみ、半角スペース(または何も入れない)を入れる
-            // 日本語の場合はスペースなしでも良いが、英語や区切り用に一応残す
-            if (!this.confirmedContent.endsWith('\n') && !this.confirmedContent.endsWith('　') && !this.confirmedContent.endsWith(' ')) {
-                // this.confirmedContent += ''; // 完全に詰めたい場合はここを空に
+            if (currentText.length > 0 && !currentText.endsWith('\n') && !currentText.endsWith('　') && !currentText.endsWith(' ')) {
+                currentText += ' ';
             }
         }
 
-        this.confirmedContent += processedText;
+        const cleanedText = text.replace(/^[・　 ]+/, '');
+        this.memoTextarea.value = currentText + cleanedText;
         this.isSameLine = true;
         this.resetNewlineTimer();
+        this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
     }
 
     openModal(memoId = null) {
@@ -265,16 +236,15 @@ class EchoMemo {
 
         if (memoId) {
             const memo = this.memos.find(m => m.id == memoId);
-            this.confirmedContent = memo.content;
+            this.memoTextarea.value = memo.content;
             this.tagInput.value = (memo.tags || []).join(', ');
             this.deleteMemoBtn.classList.remove('hidden');
         } else {
-            this.confirmedContent = '';
+            this.memoTextarea.value = '';
             this.tagInput.value = '';
             this.deleteMemoBtn.classList.add('hidden');
         }
 
-        this.memoTextarea.value = this.confirmedContent;
         this.editModal.classList.remove('hidden');
         this.updateTagSuggestions();
         document.body.style.overflow = 'hidden';
