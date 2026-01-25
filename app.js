@@ -120,6 +120,16 @@ class EchoMemo {
         this.recognition.continuous = true;
         this.recognition.interimResults = false;
 
+        this.recognition.onstart = () => {
+            // マイクが実際に音を拾える状態になった瞬間
+            this.updateRecordingStatus('● お話しください');
+
+            // スマホを震わせて合図（対応ブラウザのみ）
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(50); // 50msの短い振動
+            }
+        };
+
         this.recognition.onresult = (event) => {
             const transcript = event.results[event.results.length - 1][0].transcript.trim();
             if (transcript) {
@@ -150,12 +160,19 @@ class EchoMemo {
     startRecording() {
         if (!this.recognition) return;
         try {
-            this.recognition.start();
-            this.isRecording = true;
+            // ステータスを「準備中」にする（マイクはまだ生きていない）
+            this.updateRecordingStatus('マイク起動中...');
             this.micBtn.classList.add('recording');
-            this.updateRecordingStatus('聞き取り中...');
+            this.isRecording = true;
+
+            this.recognition.start();
+
+            // 実際の開始検知は setupSpeechRecognition 内の onstart で行う
         } catch (e) {
             console.error('Failed to start recognition:', e);
+            this.isRecording = false;
+            this.micBtn.classList.remove('recording');
+            this.updateRecordingStatus('エラーが発生しました');
         }
     }
 
