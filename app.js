@@ -9,7 +9,7 @@ class EchoMemo {
         this.recognition = null;
         this.isRecording = false;
 
-        // Internal content state to prevent duplication bugs
+        // 【重要】内部で絶対に信頼できる「確定済み」の本文
         this.confirmedContent = '';
 
         // DOM Elements
@@ -31,8 +31,7 @@ class EchoMemo {
         this.newlineTimer = null;
         this.isSameLine = false;
 
-        // Sorting state
-        this.currentSortMode = 'date'; // 'date' or 'tags'
+        this.currentSortMode = 'date';
         this.sortToggleBtn = document.getElementById('sort-toggle-btn');
         this.sortLabel = document.getElementById('sort-label');
 
@@ -99,10 +98,9 @@ class EchoMemo {
         this.newlineBtn.addEventListener('click', () => this.forceNewline());
 
         this.editModal.querySelector('.modal-overlay').addEventListener('click', () => this.closeModal());
-
         this.sortToggleBtn.addEventListener('click', () => this.toggleSortMode());
 
-        // Sync confirmedContent when user types manually
+        // 手動入力された場合のみ、confirmedContentを同期する
         this.memoTextarea.addEventListener('input', () => {
             this.confirmedContent = this.memoTextarea.value;
         });
@@ -116,6 +114,7 @@ class EchoMemo {
 
     forceNewline() {
         const linePrefix = '　';
+        // 改行処理は常に confirmedContent に対して行う
         if (this.confirmedContent.length > 0) {
             if (!this.confirmedContent.endsWith('\n')) {
                 this.confirmedContent += '\n';
@@ -160,8 +159,8 @@ class EchoMemo {
             if (window.navigator && window.navigator.vibrate) {
                 window.navigator.vibrate(50);
             }
-            // Capture the state at the start of recognition
-            this.confirmedContent = this.memoTextarea.value;
+            // 【修正】ここでの textarea からの読み込みは行わない（二重化の元）
+            // confirmedContent は openModal や手動入力時にセットされたものを維持する
         };
 
         this.recognition.onresult = (event) => {
@@ -177,11 +176,12 @@ class EchoMemo {
                 }
             }
 
+            // 確定結果が届いた場合のみ内部データを更新
             if (finalTranscriptOnEvent) {
-                this.appendFormattedText(finalTranscriptOnEvent);
+                this.appendFinalText(finalTranscriptOnEvent);
             }
 
-            // Always display confirmed part + currently guessed part
+            // 表示を更新（確定分 + 途中経過）
             const interimPart = interimTranscript ? (this.isSameLine ? ' ' : '　') + interimTranscript.replace(/^[・　 ]+/, '') : '';
             this.memoTextarea.value = this.confirmedContent + interimPart;
             this.memoTextarea.scrollTop = this.memoTextarea.scrollHeight;
@@ -189,11 +189,15 @@ class EchoMemo {
 
         this.recognition.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
-            this.stopRecording();
+            // マイクが勝手に切れた場合など、録音中なら止める
+            if (event.error !== 'no-speech') {
+                this.stopRecording();
+            }
         };
 
         this.recognition.onend = () => {
             if (this.isRecording) {
+                // 自動継続
                 this.recognition.start();
             }
         };
@@ -230,7 +234,8 @@ class EchoMemo {
         this.updateRecordingStatus('タップして話す');
     }
 
-    appendFormattedText(text) {
+    // 確定したテキストを整形して confirmedContent に追加する
+    appendFinalText(text) {
         const linePrefix = '　';
         let processedText = text.replace(/^[・　 ]+/, '');
 
@@ -242,8 +247,10 @@ class EchoMemo {
             }
             this.confirmedContent += linePrefix;
         } else {
+            // 文字列の末尾が改行や空白でない場合のみ、半角スペース(または何も入れない)を入れる
+            // 日本語の場合はスペースなしでも良いが、英語や区切り用に一応残す
             if (!this.confirmedContent.endsWith('\n') && !this.confirmedContent.endsWith('　') && !this.confirmedContent.endsWith(' ')) {
-                this.confirmedContent += ' ';
+                // this.confirmedContent += ''; // 完全に詰めたい場合はここを空に
             }
         }
 
@@ -269,10 +276,8 @@ class EchoMemo {
 
         this.memoTextarea.value = this.confirmedContent;
         this.editModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-
-        // Refresh suggestions for this open
         this.updateTagSuggestions();
+        document.body.style.overflow = 'hidden';
     }
 
     closeModal() {
