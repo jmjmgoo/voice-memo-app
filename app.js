@@ -38,7 +38,7 @@ class EchoMemo {
     async init() {
         await this.fetchMemos();
         this.setupEventListeners();
-        this.setupSpeechRecognition();
+        // this.setupSpeechRecognition(); // Removed in favor of native keyboard voice input
         this.handleUrlActions();
     }
 
@@ -129,81 +129,25 @@ class EchoMemo {
 
     startVoiceWidget() {
         this.openModal();
-        this.startRecording();
+        // Web Speech API replaced by focusing textarea for native keyboard voice input
     }
 
     setupSpeechRecognition() {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            console.error('Speech Recognition not supported.');
-            this.updateRecordingStatus('音声認識非対応のブラウザです');
-            this.micBtn.disabled = true;
-            return;
-        }
-
-        this.recognition = new SpeechRecognition();
-        this.recognition.lang = 'ja-JP';
-        this.recognition.continuous = true;
-        this.recognition.interimResults = false; // リアルタイム表示を無効化（安定性優先に復帰）
-
-        this.recognition.onstart = () => {
-            this.updateRecordingStatus('● お話しください');
-            if (window.navigator && window.navigator.vibrate) {
-                window.navigator.vibrate(50);
-            }
-        };
-
-        this.recognition.onresult = (event) => {
-            // 確定結果（Final）のみを処理するように戻す
-            const transcript = event.results[event.results.length - 1][0].transcript.trim();
-            if (transcript) {
-                this.appendFormattedText(transcript);
-            }
-        };
-
-        this.recognition.onerror = (event) => {
-            console.error('Speech recognition error:', event.error);
-            if (event.error !== 'no-speech') {
-                this.stopRecording();
-            }
-        };
-
-        this.recognition.onend = () => {
-            if (this.isRecording) {
-                this.recognition.start();
-            }
-        };
+        // Native keyboard voice input is preferred.
+        // Focusing the textarea will bring up the soft keyboard with the Google voice input button.
+        this.updateRecordingStatus('キーボードの音声入力をお使いください');
     }
 
     toggleRecording() {
-        if (this.isRecording) {
-            this.stopRecording();
-        } else {
-            this.startRecording();
-        }
+        this.memoTextarea.focus();
     }
 
     startRecording() {
-        if (!this.recognition) return;
-        try {
-            this.updateRecordingStatus('マイク起動中...');
-            this.micBtn.classList.add('recording');
-            this.isRecording = true;
-            this.recognition.start();
-        } catch (e) {
-            console.error('Failed to start recognition:', e);
-            this.isRecording = false;
-            this.micBtn.classList.remove('recording');
-            this.updateRecordingStatus('エラーが発生しました');
-        }
+        this.memoTextarea.focus();
     }
 
     stopRecording() {
-        if (!this.recognition) return;
-        this.recognition.stop();
-        this.isRecording = false;
-        this.micBtn.classList.remove('recording');
-        this.updateRecordingStatus('タップして話す');
+        // No longer using Web Speech API
     }
 
     appendFormattedText(text) {
@@ -248,6 +192,11 @@ class EchoMemo {
         this.editModal.classList.remove('hidden');
         this.updateTagSuggestions();
         document.body.style.overflow = 'hidden';
+
+        // Automatically focus for native voice input
+        setTimeout(() => {
+            this.memoTextarea.focus();
+        }, 300);
     }
 
     closeModal() {
