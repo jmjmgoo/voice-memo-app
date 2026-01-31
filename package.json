@@ -1,5 +1,5 @@
 {
-    "name": "echomemo-server",
+    "name": "voice-memo-app",
     "version": "1.0.0",
     "description": "Voice memo app with Node.js and JSON file storage",
     "main": "server.js",

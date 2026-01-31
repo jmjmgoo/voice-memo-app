@@ -1,6 +1,6 @@
 {
-    "name": "EchoMemo",
-    "short_name": "EchoMemo",
+    "name": "voice-memo-app",
+    "short_name": "voice-memo-app",
     "description": "音声認識メモアプリ",
     "start_url": "./index.html?action=voice",
     "display": "standalone",
