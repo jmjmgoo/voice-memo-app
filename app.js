@@ -258,9 +258,6 @@ class EchoMemo {
         // Automatically focus for native voice input
         setTimeout(() => {
             this.memoTextarea.focus();
-            if (startVoice) {
-                this.startRecording();
-            }
         }, 300);
     }
 
